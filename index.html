@@ -1,0 +1,520 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendario de Formación 2026-2027</title>
+
+<style>
+:root {
+  --bg:#10131c;
+  --panel:#1b2030;
+  --text:#f4f5fa;
+  --muted:#aab1c5;
+  --border:#30384d;
+}
+* {box-sizing:border-box}
+body {
+  margin:0;
+  padding:24px;
+  font-family:Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+header {text-align:center;margin-bottom:25px}
+header p {color:var(--muted)}
+.stats {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(145px,1fr));
+  gap:12px;
+  margin-bottom:20px;
+}
+.stat {
+  background:var(--panel);
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:12px;
+}
+.stat strong {
+  display:block;
+  font-size:25px;
+  margin-top:8px;
+}
+.controls {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:20px;
+}
+input,select,button {
+  background:var(--panel);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:11px;
+  font-size:14px;
+}
+input {flex:1;min-width:180px}
+button {cursor:pointer}
+button:hover {background:#30384d}
+.month {
+  margin-bottom:25px;
+  background:var(--panel);
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:12px;
+}
+.month h2 {margin-top:0}
+.days {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(145px,1fr));
+  gap:9px;
+}
+.day {
+  min-height:105px;
+  padding:12px;
+  border-radius:9px;
+  border:1px solid transparent;
+}
+.date {font-weight:bold;margin-bottom:9px}
+.module {font-size:13px;line-height:1.4}
+.hours {font-size:12px;margin-top:7px;opacity:.85}
+.igualdad {background:#594080}
+.digitales {background:#155b83}
+.transversales {background:#806019}
+.activacion {background:#8a3f35}
+.cp {background:#23634e}
+.practicas {background:#75436e}
+.libre {
+  background:#292f40;
+  border-color:#3b4358;
+  color:#aab1c5;
+}
+.today {outline:3px solid white;outline-offset:2px}
+.legend {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:18px 0;
+}
+.legend span {
+  padding:8px 10px;
+  border-radius:7px;
+  font-size:12px;
+}
+.discord {
+  background:var(--panel);
+  padding:18px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  margin:20px 0;
+}
+.discord h2 {margin-top:0}
+.status {color:var(--muted);font-size:13px}
+.progress {
+  height:12px;
+  border-radius:20px;
+  background:#30384d;
+  overflow:hidden;
+  margin-top:12px;
+}
+.progress-bar {
+  height:100%;
+  width:0%;
+  background:#22c55e;
+  transition:width .3s;
+}
+footer {
+  text-align:center;
+  color:var(--muted);
+  margin-top:30px;
+}
+@media print {
+  body {background:white;color:black;padding:8px}
+  .controls,.discord {display:none}
+  .month {break-inside:avoid;background:white;border:1px solid #aaa}
+  .day {
+    print-color-adjust:exact;
+    -webkit-print-color-adjust:exact;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>📚 CALENDARIO DE FORMACIÓN</h1>
+  <p>26 de octubre de 2026 — 1 de julio de 2027</p>
+</header>
+
+<section class="stats">
+  <div class="stat">Total del curso<strong id="totalHours">0 h</strong></div>
+  <div class="stat">Horas realizadas<strong id="hoursDone">0 h</strong></div>
+  <div class="stat">Horas pendientes<strong id="hoursLeft">0 h</strong></div>
+  <div class="stat">Días con formación<strong id="totalDays">0</strong></div>
+  <div class="stat">Días libres<strong id="freeDays">0</strong></div>
+</section>
+
+<div class="stat">
+  <strong id="progressText">0 % completado</strong>
+  <div class="progress">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+</div>
+
+<section class="discord">
+  <h2>🔔 NOTIFICACIONES DISCORD</h2>
+  <p>Resumen diario automático a las 08:00.</p>
+  <button id="testButton" onclick="sendDiscordNotification()">
+    📩 Enviar prueba a Discord
+  </button>
+  <p class="status" id="discordStatus">Comprobando conexión...</p>
+  <p class="status">
+    Los avisos automáticos se ejecutan desde Cloudflare,
+    incluso si cierras esta página.
+  </p>
+</section>
+
+<div class="legend">
+  <span class="igualdad">IGUALDAD</span>
+  <span class="digitales">COMPETENCIAS DIGITALES</span>
+  <span class="transversales">COMPETENCIAS TRANSVERSALES</span>
+  <span class="activacion">ACTIVACIÓN LABORAL</span>
+  <span class="cp">CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS</span>
+  <span class="practicas">MÓDULO DE PRÁCTICAS</span>
+  <span class="libre">LIBRE / SIN FORMACIÓN</span>
+</div>
+
+<div class="controls">
+  <input id="search" type="search" placeholder="Buscar fecha o módulo...">
+
+  <select id="monthFilter">
+    <option value="all">Todos los meses</option>
+  </select>
+
+  <select id="typeFilter">
+    <option value="all">Todos los módulos</option>
+    <option value="IGUALDAD">IGUALDAD</option>
+    <option value="COMPETENCIAS DIGITALES">COMPETENCIAS DIGITALES</option>
+    <option value="COMPETENCIAS TRANSVERSALES">COMPETENCIAS TRANSVERSALES</option>
+    <option value="ACTIVACIÓN LABORAL">ACTIVACIÓN LABORAL</option>
+    <option value="CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS">CP</option>
+    <option value="MÓDULO DE PRÁCTICAS">PRÁCTICAS</option>
+    <option value="LIBRE">LIBRES</option>
+  </select>
+
+  <button onclick="window.print()">🖨️ Imprimir</button>
+</div>
+
+<main id="calendar"></main>
+
+<footer>
+  CALENDARIO DE FORMACIÓN 2026–2027
+</footer>
+
+<script>
+
+// =============================================
+// CONFIGURACIÓN
+// =============================================
+
+// Pega aquí la dirección de tu Cloudflare Worker.
+const WORKER_URL = "PEGA_AQUI_LA_URL_DE_TU_WORKER";
+
+// =============================================
+// CALENDARIO
+// =============================================
+
+const schedules = [
+  ["2026-10-26","2026-10-27","IGUALDAD",5],
+
+  ["2026-10-28","2026-10-30","COMPETENCIAS DIGITALES",4],
+  ["2026-11-02","2026-11-06","COMPETENCIAS DIGITALES",4],
+  ["2026-11-09","2026-11-13","COMPETENCIAS DIGITALES",4],
+  ["2026-11-16","2026-11-17","COMPETENCIAS DIGITALES",4],
+
+  ["2026-11-18","2026-11-20","COMPETENCIAS TRANSVERSALES",4],
+  ["2026-11-23","2026-11-24","COMPETENCIAS TRANSVERSALES",4],
+
+  ["2026-11-25","2026-11-27","ACTIVACIÓN LABORAL",4],
+  ["2026-11-30","2026-12-01","ACTIVACIÓN LABORAL",4],
+
+  ["2026-12-02","2026-12-04","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2026-12-09","2026-12-11","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2026-12-14","2026-12-18","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+
+  ["2027-01-11","2027-01-15","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-01-18","2027-01-22","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-01-25","2027-01-29","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+
+  ["2027-02-01","2027-02-05","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-02-08","2027-02-12","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-02-15","2027-02-19","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-02-22","2027-02-26","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+
+  ["2027-03-01","2027-03-05","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-03-08","2027-03-12","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-03-15","2027-03-18","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-03-22","2027-03-24","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+
+  ["2027-04-05","2027-04-09","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-04-12","2027-04-16","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-04-19","2027-04-23","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-04-26","2027-04-30","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+
+  ["2027-05-03","2027-05-07","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-05-10","2027-05-14","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-05-16","2027-05-21","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-05-24","2027-05-28","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+
+  ["2027-06-01","2027-06-04","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  ["2027-06-07","2027-06-08","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+
+  ["2027-06-14","2027-06-18","MÓDULO DE PRÁCTICAS",6],
+  ["2027-06-21","2027-06-25","MÓDULO DE PRÁCTICAS",6],
+  ["2027-06-28","2027-06-30","MÓDULO DE PRÁCTICAS",6],
+  ["2027-07-01","2027-07-01","MÓDULO DE PRÁCTICAS",2]
+];
+
+const monthNames = [
+  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+];
+
+const dayNames = [
+  "Domingo","Lunes","Martes","Miércoles",
+  "Jueves","Viernes","Sábado"
+];
+
+const pad = n => String(n).padStart(2,"0");
+
+function key(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+}
+
+function getSchedule(date) {
+  const k = key(date);
+  const item = schedules.find(s => k >= s[0] && k <= s[1]);
+
+  if (!item) return null;
+
+  const weekday = date.getDay();
+
+  // Solo el domingo 16 de mayo es una excepción.
+  if ((weekday === 0 || weekday === 6) && k !== "2027-05-16") {
+    return null;
+  }
+
+  return {name:item[2],hours:item[3]};
+}
+
+// =============================================
+// GENERAR DÍAS
+// =============================================
+
+const days = [];
+
+for (
+  let date = new Date(2026,9,26);
+  date <= new Date(2027,6,1);
+  date.setDate(date.getDate()+1)
+) {
+  const d = new Date(date);
+  const schedule = getSchedule(d);
+
+  days.push({
+    date:d,
+    key:key(d),
+    name:schedule ? schedule.name : "LIBRE",
+    hours:schedule ? schedule.hours : 0
+  });
+}
+
+// =============================================
+// HORAS
+// =============================================
+
+function getStats() {
+  const now = new Date();
+  now.setHours(0,0,0,0);
+
+  const total = days.reduce((sum,d)=>sum+d.hours,0);
+
+  const done = days
+    .filter(d=>d.date<now)
+    .reduce((sum,d)=>sum+d.hours,0);
+
+  return {
+    total,
+    done,
+    left:total-done,
+    totalDays:days.filter(d=>d.hours>0).length,
+    freeDays:days.filter(d=>d.hours===0).length
+  };
+}
+
+function updateStats() {
+  const s = getStats();
+
+  document.getElementById("totalHours").textContent=s.total+" h";
+  document.getElementById("hoursDone").textContent=s.done+" h";
+  document.getElementById("hoursLeft").textContent=s.left+" h";
+  document.getElementById("totalDays").textContent=s.totalDays;
+  document.getElementById("freeDays").textContent=s.freeDays;
+
+  const percent = s.total ? (s.done/s.total)*100 : 0;
+
+  document.getElementById("progressText").textContent =
+    percent.toFixed(1)+" % completado";
+
+  document.getElementById("progressBar").style.width =
+    percent+"%";
+}
+
+// =============================================
+// COLORES
+// =============================================
+
+function className(name) {
+  if(name==="IGUALDAD") return "igualdad";
+  if(name==="COMPETENCIAS DIGITALES") return "digitales";
+  if(name==="COMPETENCIAS TRANSVERSALES") return "transversales";
+  if(name==="ACTIVACIÓN LABORAL") return "activacion";
+  if(name.startsWith("CP ")) return "cp";
+  if(name==="MÓDULO DE PRÁCTICAS") return "practicas";
+  return "libre";
+}
+
+// =============================================
+// CALENDARIO VISUAL
+// =============================================
+
+function render() {
+  const calendar=document.getElementById("calendar");
+  const search=document.getElementById("search").value.toLowerCase();
+  const monthFilter=document.getElementById("monthFilter").value;
+  const typeFilter=document.getElementById("typeFilter").value;
+  const today=key(new Date());
+
+  calendar.innerHTML="";
+  const grouped={};
+
+  days.forEach(day=>{
+    const mk=`${day.date.getFullYear()}-${pad(day.date.getMonth()+1)}`;
+    if(!grouped[mk]) grouped[mk]=[];
+    grouped[mk].push(day);
+  });
+
+  Object.entries(grouped).forEach(([mk,monthDays])=>{
+    if(monthFilter!=="all" && monthFilter!==mk) return;
+
+    const visible=monthDays.filter(day=>{
+      const label=`${day.date.getDate()} ${monthNames[day.date.getMonth()]} ${day.date.getFullYear()}`;
+      const matchesSearch=`${label} ${day.name}`.toLowerCase().includes(search);
+      const matchesType=typeFilter==="all" ||
+        (typeFilter==="LIBRE" && day.hours===0) ||
+        day.name===typeFilter;
+
+      return matchesSearch && matchesType;
+    });
+
+    if(!visible.length) return;
+
+    const section=document.createElement("section");
+    section.className="month";
+
+    const heading=document.createElement("h2");
+    heading.textContent=`${monthNames[monthDays[0].date.getMonth()]} ${monthDays[0].date.getFullYear()}`;
+    section.appendChild(heading);
+
+    const grid=document.createElement("div");
+    grid.className="days";
+
+    visible.forEach(day=>{
+      const card=document.createElement("article");
+      card.className=`day ${className(day.name)}`;
+
+      if(day.key===today) card.classList.add("today");
+
+      card.innerHTML=`
+        <div class="date">${dayNames[day.date.getDay()]} ${day.date.getDate()}</div>
+        <div class="module">${day.name}</div>
+        <div class="hours">${day.hours ? day.hours+" horas" : "Sin formación"}</div>
+      `;
+
+      grid.appendChild(card);
+    });
+
+    section.appendChild(grid);
+    calendar.appendChild(section);
+  });
+}
+
+// =============================================
+// FILTROS
+// =============================================
+
+const monthFilter=document.getElementById("monthFilter");
+
+const months={};
+
+days.forEach(day=>{
+  const mk=`${day.date.getFullYear()}-${pad(day.date.getMonth()+1)}`;
+  months[mk]=`${monthNames[day.date.getMonth()]} ${day.date.getFullYear()}`;
+});
+
+Object.entries(months).forEach(([value,label])=>{
+  const option=document.createElement("option");
+  option.value=value;
+  option.textContent=label;
+  monthFilter.appendChild(option);
+});
+
+document.getElementById("search").addEventListener("input",render);
+monthFilter.addEventListener("change",render);
+document.getElementById("typeFilter").addEventListener("change",render);
+
+// =============================================
+// DISCORD: PRUEBA MANUAL
+// =============================================
+
+async function sendDiscordNotification() {
+  const status=document.getElementById("discordStatus");
+
+  if(WORKER_URL==="PEGA_AQUI_LA_URL_DE_TU_WORKER") {
+    status.textContent="⚠️ Primero configura la URL de Cloudflare Worker.";
+    return;
+  }
+
+  try {
+    status.textContent="Enviando prueba...";
+
+    const response=await fetch(WORKER_URL,{
+      method:"POST"
+    });
+
+    const result=await response.json();
+
+    if(!response.ok || !result.success) {
+      throw new Error(result.error || "Error de conexión");
+    }
+
+    status.textContent="✅ Prueba enviada correctamente a Discord.";
+
+  } catch(error) {
+    status.textContent="❌ "+error.message;
+  }
+}
+
+// =============================================
+// INICIO
+// =============================================
+
+updateStats();
+render();
+
+</script>
+</body>
+</html>
