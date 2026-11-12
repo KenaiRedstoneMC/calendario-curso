@@ -5,7 +5,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calendario de Formación 2026-2027</title>
-
 <style>
 :root {
   --bg:#10131c;
@@ -41,7 +40,7 @@ header p {color:var(--muted)}
   font-size:25px;
   margin-top:8px;
 }
-.controls {
+.controls,.discord-controls {
   display:flex;
   flex-wrap:wrap;
   gap:10px;
@@ -72,14 +71,19 @@ button:hover {background:#30384d}
   gap:9px;
 }
 .day {
-  min-height:105px;
+  min-height:125px;
   padding:12px;
   border-radius:9px;
   border:1px solid transparent;
 }
 .date {font-weight:bold;margin-bottom:9px}
 .module {font-size:13px;line-height:1.4}
-.hours {font-size:12px;margin-top:7px;opacity:.85}
+.hours,.schedule-time {
+  font-size:12px;
+  margin-top:7px;
+  opacity:.9;
+}
+.schedule-time {font-weight:bold}
 .igualdad {background:#594080}
 .digitales {background:#155b83}
 .transversales {background:#806019}
@@ -112,27 +116,12 @@ button:hover {background:#30384d}
 }
 .discord h2 {margin-top:0}
 .status {color:var(--muted);font-size:13px}
-.progress {
-  height:12px;
-  border-radius:20px;
-  background:#30384d;
-  overflow:hidden;
-  margin-top:12px;
-}
-.progress-bar {
-  height:100%;
-  width:0%;
-  background:#22c55e;
-  transition:width .3s;
-}
-footer {
-  text-align:center;
-  color:var(--muted);
-  margin-top:30px;
+@media(max-width:600px) {
+  body {padding:12px}
 }
 @media print {
   body {background:white;color:black;padding:8px}
-  .controls,.discord {display:none}
+  .controls,.discord-controls,.discord {display:none}
   .month {break-inside:avoid;background:white;border:1px solid #aaa}
   .day {
     print-color-adjust:exact;
@@ -141,12 +130,12 @@ footer {
 }
 </style>
 </head>
-
 <body>
 
 <header>
   <h1>📚 CALENDARIO DE FORMACIÓN</h1>
   <p>26 de octubre de 2026 — 1 de julio de 2027</p>
+  <p>🕙 Horario habitual: 10:00–14:00</p>
 </header>
 
 <section class="stats">
@@ -157,23 +146,20 @@ footer {
   <div class="stat">Días libres<strong id="freeDays">0</strong></div>
 </section>
 
-<div class="stat">
-  <strong id="progressText">0 % completado</strong>
-  <div class="progress">
-    <div class="progress-bar" id="progressBar"></div>
-  </div>
-</div>
-
 <section class="discord">
-  <h2>🔔 NOTIFICACIONES DISCORD</h2>
-  <p>Resumen diario automático a las 08:00.</p>
-  <button id="testButton" onclick="sendDiscordNotification()">
-    📩 Enviar prueba a Discord
-  </button>
-  <p class="status" id="discordStatus">Comprobando conexión...</p>
+  <h2>🔔 Notificaciones de Discord</h2>
+  <p>Resumen diario de tu formación a las 08:00.</p>
+  <div class="discord-controls">
+    <button onclick="sendDiscordNotification(true)">
+      📩 Enviar notificación de prueba
+    </button>
+  </div>
+  <p class="status" id="discordStatus">
+    Notificaciones pendientes de configurar.
+  </p>
   <p class="status">
-    Los avisos automáticos se ejecutan desde Cloudflare,
-    incluso si cierras esta página.
+    El envío desde esta página requiere que permanezca abierta.
+    Para avisos aunque esté cerrada se necesita un servicio externo.
   </p>
 </section>
 
@@ -211,71 +197,76 @@ footer {
 <main id="calendar"></main>
 
 <footer>
-  CALENDARIO DE FORMACIÓN 2026–2027
+  <p>Calendario de formación 2026–2027</p>
 </footer>
 
 <script>
 
-// =============================================
+// ================================================
 // CONFIGURACIÓN
-// =============================================
+// ================================================
 
-// Pega aquí la dirección de tu Cloudflare Worker.
-const WORKER_URL = "PEGA_AQUI_LA_URL_DE_TU_WORKER";
+// No pongas aquí el webhook antiguo ni publiques
+// nunca una dirección secreta de Discord en GitHub.
 
-// =============================================
+const DISCORD_WEBHOOK_URL = "PEGA_AQUI_TU_NUEVO_WEBHOOK";
+
+const NOTIFICATION_HOUR = 8;
+const NOTIFICATION_MINUTE = 0;
+
+// ================================================
 // CALENDARIO
-// =============================================
+// ================================================
 
 const schedules = [
-  ["2026-10-26","2026-10-27","IGUALDAD",5],
+  {start:"2026-10-26",end:"2026-10-27",name:"IGUALDAD",hours:5},
 
-  ["2026-10-28","2026-10-30","COMPETENCIAS DIGITALES",4],
-  ["2026-11-02","2026-11-06","COMPETENCIAS DIGITALES",4],
-  ["2026-11-09","2026-11-13","COMPETENCIAS DIGITALES",4],
-  ["2026-11-16","2026-11-17","COMPETENCIAS DIGITALES",4],
+  {start:"2026-10-28",end:"2026-10-30",name:"COMPETENCIAS DIGITALES",hours:4},
+  {start:"2026-11-02",end:"2026-11-06",name:"COMPETENCIAS DIGITALES",hours:4},
+  {start:"2026-11-09",end:"2026-11-13",name:"COMPETENCIAS DIGITALES",hours:4},
+  {start:"2026-11-16",end:"2026-11-17",name:"COMPETENCIAS DIGITALES",hours:4},
 
-  ["2026-11-18","2026-11-20","COMPETENCIAS TRANSVERSALES",4],
-  ["2026-11-23","2026-11-24","COMPETENCIAS TRANSVERSALES",4],
+  {start:"2026-11-18",end:"2026-11-20",name:"COMPETENCIAS TRANSVERSALES",hours:4},
+  {start:"2026-11-23",end:"2026-11-24",name:"COMPETENCIAS TRANSVERSALES",hours:4},
 
-  ["2026-11-25","2026-11-27","ACTIVACIÓN LABORAL",4],
-  ["2026-11-30","2026-12-01","ACTIVACIÓN LABORAL",4],
+  {start:"2026-11-25",end:"2026-11-27",name:"ACTIVACIÓN LABORAL",hours:4},
+  {start:"2026-11-30",end:"2026-12-01",name:"ACTIVACIÓN LABORAL",hours:4},
 
-  ["2026-12-02","2026-12-04","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2026-12-09","2026-12-11","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2026-12-14","2026-12-18","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  {start:"2026-12-02",end:"2026-12-04",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2026-12-09",end:"2026-12-11",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2026-12-14",end:"2026-12-18",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
 
-  ["2027-01-11","2027-01-15","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-01-18","2027-01-22","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-01-25","2027-01-29","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  {start:"2027-01-11",end:"2027-01-15",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-01-18",end:"2027-01-22",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-01-25",end:"2027-01-29",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
 
-  ["2027-02-01","2027-02-05","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-02-08","2027-02-12","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-02-15","2027-02-19","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-02-22","2027-02-26","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  {start:"2027-02-01",end:"2027-02-05",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-02-08",end:"2027-02-12",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-02-15",end:"2027-02-19",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-02-22",end:"2027-02-26",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
 
-  ["2027-03-01","2027-03-05","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-03-08","2027-03-12","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-03-15","2027-03-18","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-03-22","2027-03-24","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  {start:"2027-03-01",end:"2027-03-05",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-03-08",end:"2027-03-12",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-03-15",end:"2027-03-18",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-03-22",end:"2027-03-24",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
 
-  ["2027-04-05","2027-04-09","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-04-12","2027-04-16","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-04-19","2027-04-23","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-04-26","2027-04-30","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  {start:"2027-04-05",end:"2027-04-09",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-04-12",end:"2027-04-16",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-04-19",end:"2027-04-23",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-04-26",end:"2027-04-30",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
 
-  ["2027-05-03","2027-05-07","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-05-10","2027-05-14","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-05-16","2027-05-21","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-05-24","2027-05-28","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  {start:"2027-05-03",end:"2027-05-07",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-05-10",end:"2027-05-14",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-05-16",end:"2027-05-21",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-05-24",end:"2027-05-28",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
 
-  ["2027-06-01","2027-06-04","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
-  ["2027-06-07","2027-06-08","CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",4],
+  {start:"2027-06-01",end:"2027-06-04",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
+  {start:"2027-06-07",end:"2027-06-08",name:"CP OPERACIONES DE GRABACIÓN Y TRATAMIENTO DE DATOS",hours:4},
 
-  ["2027-06-14","2027-06-18","MÓDULO DE PRÁCTICAS",6],
-  ["2027-06-21","2027-06-25","MÓDULO DE PRÁCTICAS",6],
-  ["2027-06-28","2027-06-30","MÓDULO DE PRÁCTICAS",6],
-  ["2027-07-01","2027-07-01","MÓDULO DE PRÁCTICAS",2]
+  {start:"2027-06-14",end:"2027-06-18",name:"MÓDULO DE PRÁCTICAS",hours:6},
+  {start:"2027-06-21",end:"2027-06-25",name:"MÓDULO DE PRÁCTICAS",hours:6},
+  {start:"2027-06-28",end:"2027-06-30",name:"MÓDULO DE PRÁCTICAS",hours:6},
+  {start:"2027-07-01",end:"2027-07-01",name:"MÓDULO DE PRÁCTICAS",hours:2}
 ];
 
 const monthNames = [
@@ -296,31 +287,34 @@ function key(date) {
 
 function getSchedule(date) {
   const k = key(date);
-  const item = schedules.find(s => k >= s[0] && k <= s[1]);
-
-  if (!item) return null;
-
-  const weekday = date.getDay();
-
-  // Solo el domingo 16 de mayo es una excepción.
-  if ((weekday === 0 || weekday === 6) && k !== "2027-05-16") {
-    return null;
-  }
-
-  return {name:item[2],hours:item[3]};
+  return schedules.find(s => k >= s.start && k <= s.end) || null;
 }
 
-// =============================================
-// GENERAR DÍAS
-// =============================================
+function getTime(hours) {
+  if (!hours) return "";
+  const endHour = 10 + hours;
+  return `10:00–${pad(endHour)}:00`;
+}
 
+function className(name) {
+  if (name === "IGUALDAD") return "igualdad";
+  if (name === "COMPETENCIAS DIGITALES") return "digitales";
+  if (name === "COMPETENCIAS TRANSVERSALES") return "transversales";
+  if (name === "ACTIVACIÓN LABORAL") return "activacion";
+  if (name.startsWith("CP ")) return "cp";
+  if (name === "MÓDULO DE PRÁCTICAS") return "practicas";
+  return "libre";
+}
+
+// ================================================
+// GENERAR DÍAS
+// ================================================
+
+const startDate = new Date(2026,9,26);
+const endDate = new Date(2027,6,1);
 const days = [];
 
-for (
-  let date = new Date(2026,9,26);
-  date <= new Date(2027,6,1);
-  date.setDate(date.getDate()+1)
-) {
+for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate()+1)) {
   const d = new Date(date);
   const schedule = getSchedule(d);
 
@@ -332,115 +326,107 @@ for (
   });
 }
 
-// =============================================
-// HORAS
-// =============================================
+// ================================================
+// ESTADÍSTICAS
+// ================================================
 
 function getStats() {
   const now = new Date();
   now.setHours(0,0,0,0);
 
-  const total = days.reduce((sum,d)=>sum+d.hours,0);
+  const totalHours = days.reduce((sum,d) => sum+d.hours,0);
 
-  const done = days
-    .filter(d=>d.date<now)
-    .reduce((sum,d)=>sum+d.hours,0);
+  const hoursDone = days
+    .filter(d => d.date < now)
+    .reduce((sum,d) => sum+d.hours,0);
+
+  const hoursLeft = totalHours-hoursDone;
 
   return {
-    total,
-    done,
-    left:total-done,
-    totalDays:days.filter(d=>d.hours>0).length,
-    freeDays:days.filter(d=>d.hours===0).length
+    totalHours,
+    hoursDone,
+    hoursLeft,
+    totalDays:days.filter(d => d.hours>0).length,
+    freeDays:days.filter(d => d.hours===0).length
   };
 }
 
 function updateStats() {
   const s = getStats();
 
-  document.getElementById("totalHours").textContent=s.total+" h";
-  document.getElementById("hoursDone").textContent=s.done+" h";
-  document.getElementById("hoursLeft").textContent=s.left+" h";
-  document.getElementById("totalDays").textContent=s.totalDays;
-  document.getElementById("freeDays").textContent=s.freeDays;
-
-  const percent = s.total ? (s.done/s.total)*100 : 0;
-
-  document.getElementById("progressText").textContent =
-    percent.toFixed(1)+" % completado";
-
-  document.getElementById("progressBar").style.width =
-    percent+"%";
+  document.getElementById("totalHours").textContent = s.totalHours+" h";
+  document.getElementById("hoursDone").textContent = s.hoursDone+" h";
+  document.getElementById("hoursLeft").textContent = s.hoursLeft+" h";
+  document.getElementById("totalDays").textContent = s.totalDays;
+  document.getElementById("freeDays").textContent = s.freeDays;
 }
 
-// =============================================
-// COLORES
-// =============================================
-
-function className(name) {
-  if(name==="IGUALDAD") return "igualdad";
-  if(name==="COMPETENCIAS DIGITALES") return "digitales";
-  if(name==="COMPETENCIAS TRANSVERSALES") return "transversales";
-  if(name==="ACTIVACIÓN LABORAL") return "activacion";
-  if(name.startsWith("CP ")) return "cp";
-  if(name==="MÓDULO DE PRÁCTICAS") return "practicas";
-  return "libre";
-}
-
-// =============================================
-// CALENDARIO VISUAL
-// =============================================
+// ================================================
+// MOSTRAR CALENDARIO
+// ================================================
 
 function render() {
-  const calendar=document.getElementById("calendar");
-  const search=document.getElementById("search").value.toLowerCase();
-  const monthFilter=document.getElementById("monthFilter").value;
-  const typeFilter=document.getElementById("typeFilter").value;
-  const today=key(new Date());
+  const calendar = document.getElementById("calendar");
+  const search = document.getElementById("search").value.toLowerCase();
+  const monthFilter = document.getElementById("monthFilter").value;
+  const typeFilter = document.getElementById("typeFilter").value;
+  const today = key(new Date());
 
-  calendar.innerHTML="";
-  const grouped={};
+  calendar.innerHTML = "";
+  const grouped = {};
 
-  days.forEach(day=>{
-    const mk=`${day.date.getFullYear()}-${pad(day.date.getMonth()+1)}`;
-    if(!grouped[mk]) grouped[mk]=[];
-    grouped[mk].push(day);
+  days.forEach(day => {
+    const monthKey = `${day.date.getFullYear()}-${pad(day.date.getMonth()+1)}`;
+    if (!grouped[monthKey]) grouped[monthKey] = [];
+    grouped[monthKey].push(day);
   });
 
-  Object.entries(grouped).forEach(([mk,monthDays])=>{
-    if(monthFilter!=="all" && monthFilter!==mk) return;
+  Object.entries(grouped).forEach(([monthKey,monthDays]) => {
+    if (monthFilter!=="all" && monthFilter!==monthKey) return;
 
-    const visible=monthDays.filter(day=>{
-      const label=`${day.date.getDate()} ${monthNames[day.date.getMonth()]} ${day.date.getFullYear()}`;
-      const matchesSearch=`${label} ${day.name}`.toLowerCase().includes(search);
-      const matchesType=typeFilter==="all" ||
+    const visible = monthDays.filter(day => {
+      const dateText =
+        `${day.date.getDate()} ${monthNames[day.date.getMonth()]} ${day.date.getFullYear()}`;
+
+      const matchesSearch =
+        `${dateText} ${day.name} ${getTime(day.hours)}`.toLowerCase().includes(search);
+
+      const matchesType =
+        typeFilter==="all" ||
         (typeFilter==="LIBRE" && day.hours===0) ||
         day.name===typeFilter;
 
       return matchesSearch && matchesType;
     });
 
-    if(!visible.length) return;
+    if (!visible.length) return;
 
-    const section=document.createElement("section");
-    section.className="month";
+    const section = document.createElement("section");
+    section.className = "month";
 
-    const heading=document.createElement("h2");
-    heading.textContent=`${monthNames[monthDays[0].date.getMonth()]} ${monthDays[0].date.getFullYear()}`;
+    const heading = document.createElement("h2");
+    heading.textContent =
+      `${monthNames[monthDays[0].date.getMonth()]} ${monthDays[0].date.getFullYear()}`;
+
     section.appendChild(heading);
 
-    const grid=document.createElement("div");
-    grid.className="days";
+    const grid = document.createElement("div");
+    grid.className = "days";
 
-    visible.forEach(day=>{
-      const card=document.createElement("article");
-      card.className=`day ${className(day.name)}`;
+    visible.forEach(day => {
+      const card = document.createElement("article");
+      card.className = `day ${className(day.name)}`;
 
-      if(day.key===today) card.classList.add("today");
+      if (day.key===today) card.classList.add("today");
 
-      card.innerHTML=`
+      const timeHTML = day.hours
+        ? `<div class="schedule-time">🕙 ${getTime(day.hours)}</div>`
+        : "";
+
+      card.innerHTML = `
         <div class="date">${dayNames[day.date.getDay()]} ${day.date.getDate()}</div>
         <div class="module">${day.name}</div>
+        ${timeHTML}
         <div class="hours">${day.hours ? day.hours+" horas" : "Sin formación"}</div>
       `;
 
@@ -452,23 +438,20 @@ function render() {
   });
 }
 
-// =============================================
-// FILTROS
-// =============================================
+// ================================================
+// FILTRO DE MESES
+// ================================================
 
-const monthFilter=document.getElementById("monthFilter");
+const monthFilter = document.getElementById("monthFilter");
 
-const months={};
-
-days.forEach(day=>{
-  const mk=`${day.date.getFullYear()}-${pad(day.date.getMonth()+1)}`;
-  months[mk]=`${monthNames[day.date.getMonth()]} ${day.date.getFullYear()}`;
-});
-
-Object.entries(months).forEach(([value,label])=>{
-  const option=document.createElement("option");
-  option.value=value;
-  option.textContent=label;
+Object.entries(days.reduce((acc,day) => {
+  const k = `${day.date.getFullYear()}-${pad(day.date.getMonth()+1)}`;
+  acc[k] = `${monthNames[day.date.getMonth()]} ${day.date.getFullYear()}`;
+  return acc;
+},{})).forEach(([value,label]) => {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = label;
   monthFilter.appendChild(option);
 });
 
@@ -476,44 +459,119 @@ document.getElementById("search").addEventListener("input",render);
 monthFilter.addEventListener("change",render);
 document.getElementById("typeFilter").addEventListener("change",render);
 
-// =============================================
-// DISCORD: PRUEBA MANUAL
-// =============================================
+// ================================================
+// DISCORD
+// ================================================
 
-async function sendDiscordNotification() {
-  const status=document.getElementById("discordStatus");
+function getTodayInfo() {
+  const now = new Date();
+  now.setHours(0,0,0,0);
 
-  if(WORKER_URL==="PEGA_AQUI_LA_URL_DE_TU_WORKER") {
-    status.textContent="⚠️ Primero configura la URL de Cloudflare Worker.";
+  const todayKey = key(now);
+  const todaySchedule = days.find(d => d.key===todayKey);
+  const stats = getStats();
+
+  return {todayKey,todaySchedule,stats};
+}
+
+async function sendDiscordNotification(test=false) {
+  const status = document.getElementById("discordStatus");
+
+  if (
+    !DISCORD_WEBHOOK_URL ||
+    DISCORD_WEBHOOK_URL === "https://discord.com/api/webhooks/1570244879991439453/0-4Kr7Qxoero2Ake0omLefXHgEMjRTM70m48n_Q_u54-SXlQEcENlXbiHOn2w-TzJLw8"
+  ) {
+    status.textContent = "⚠️ Discord todavía no está configurado.";
     return;
   }
 
-  try {
-    status.textContent="Enviando prueba...";
+  const {todayKey,todaySchedule,stats} = getTodayInfo();
 
-    const response=await fetch(WORKER_URL,{
-      method:"POST"
+  const moduleName = todaySchedule
+    ? todaySchedule.name
+    : "DÍA LIBRE";
+
+  const todayHours = todaySchedule
+    ? todaySchedule.hours
+    : 0;
+
+  const todayTime = getTime(todayHours) || "Sin horario";
+
+  const message = {
+    username:"Calendario de Formación",
+    embeds:[{
+      title:test
+        ? "🧪 PRUEBA DEL CALENDARIO"
+        : "📚 RESUMEN DIARIO DE FORMACIÓN",
+      color:todaySchedule ? 3066993 : 9807270,
+      fields:[
+        {name:"📅 Fecha",value:todayKey,inline:true},
+        {name:"📖 Módulo de hoy",value:moduleName,inline:false},
+        {name:"🕙 Horario",value:todayTime,inline:true},
+        {name:"⏱️ Horas de hoy",value:todayHours+" horas",inline:true},
+        {name:"✅ Horas realizadas",value:stats.hoursDone+" h",inline:true},
+        {name:"⌛ Horas pendientes",value:stats.hoursLeft+" h",inline:true},
+        {name:"🎯 Total del curso",value:stats.totalHours+" h",inline:true}
+      ],
+      footer:{text:"Calendario de formación 2026-2027"},
+      timestamp:new Date().toISOString()
+    }]
+  };
+
+  try {
+    status.textContent = "Enviando notificación...";
+
+    const response = await fetch(DISCORD_WEBHOOK_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(message)
     });
 
-    const result=await response.json();
-
-    if(!response.ok || !result.success) {
-      throw new Error(result.error || "Error de conexión");
+    if (!response.ok) {
+      throw new Error("Discord respondió con HTTP "+response.status);
     }
 
-    status.textContent="✅ Prueba enviada correctamente a Discord.";
-
+    status.textContent = "✅ Notificación enviada correctamente.";
   } catch(error) {
-    status.textContent="❌ "+error.message;
+    status.textContent =
+      "❌ No se pudo confirmar el envío: "+error.message+
+      ". Puede ser un problema de CORS o de conexión.";
+    console.error(error);
   }
 }
 
-// =============================================
-// INICIO
-// =============================================
+// ================================================
+// PROGRAMACIÓN DIARIA A LAS 08:00
+// ================================================
+
+function scheduleDailyNotification() {
+  const now = new Date();
+  const next = new Date();
+
+  next.setHours(NOTIFICATION_HOUR,NOTIFICATION_MINUTE,0,0);
+
+  if (next<=now) {
+    next.setDate(next.getDate()+1);
+  }
+
+  const delay = next-now;
+
+  document.getElementById("discordStatus").textContent =
+    "🕗 Próxima notificación: "+next.toLocaleString("es-ES");
+
+  setTimeout(async () => {
+    await sendDiscordNotification(false);
+    scheduleDailyNotification();
+  },delay);
+}
+
+// ================================================
+// INICIAR
+// ================================================
 
 updateStats();
 render();
+scheduleDailyNotification();
 
 </script>
 </body>
